@@ -6,6 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 console.log('🔍 Supabase Environment Check:');
 console.log('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Loaded' : '❌ Missing');
 console.log('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Loaded' : '❌ Missing');
+console.log('🔄 Build zamanı:', new Date().toISOString());
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ SUPABASE HATASI: Environment variables eksik!');

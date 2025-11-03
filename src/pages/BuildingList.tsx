@@ -124,10 +124,17 @@ const BuildingList = () => {
         toast.success("Bina eklendi");
       }
 
+      // Önce dialog'u kapat, sonra state'leri temizle
       setIsEditDialogOpen(false);
-      setEditingBuilding(null);
-      setNewBuildingName("");
-      setNewBuildingColor(colorOptions[0].value);
+      
+      // Dialog kapandıktan sonra state temizliği için timeout
+      setTimeout(() => {
+        setEditingBuilding(null);
+        setNewBuildingName("");
+        setNewBuildingColor(colorOptions[0].value);
+      }, 100);
+      
+      // Binaları yeniden yükle
       await loadBuildings();
     } catch (error: any) {
       console.error("❌ handleSaveBuilding hatası:", error);
@@ -516,7 +523,17 @@ const BuildingList = () => {
       </footer>
 
       {/* Edit/Add Building Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          // Dialog kapanırken state temizle
+          setTimeout(() => {
+            setEditingBuilding(null);
+            setNewBuildingName("");
+            setNewBuildingColor(colorOptions[0].value);
+          }, 100);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -558,12 +575,21 @@ const BuildingList = () => {
               {editingBuilding && (
                 <Button
                   variant="destructive"
-                  onClick={() => {
+                  onClick={async () => {
                     if (confirm("Bu binayı silmek istediğinizden emin misiniz? İçindeki tüm kameralar da silinecek!")) {
-                      storageService.deleteBuilding(editingBuilding.id);
-                      toast.success("Bina silindi");
-                      setIsEditDialogOpen(false);
-                      loadBuildings();
+                      try {
+                        await storageService.deleteBuilding(editingBuilding.id);
+                        toast.success("Bina silindi");
+                        setIsEditDialogOpen(false);
+                        setTimeout(() => {
+                          setEditingBuilding(null);
+                          setNewBuildingName("");
+                          setNewBuildingColor(colorOptions[0].value);
+                        }, 100);
+                        await loadBuildings();
+                      } catch (error: any) {
+                        toast.error("Bina silinemedi: " + error.message);
+                      }
                     }
                   }}
                 >
