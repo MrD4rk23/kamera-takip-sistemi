@@ -101,7 +101,7 @@ export const storageService = {
   // Camera record methods
   getAllRecords: async (): Promise<CameraRecord[]> => {
     try {
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('cameras')
         .select('*')
         .order('serial_number', { ascending: true });
@@ -111,10 +111,13 @@ export const storageService = {
       return (data || []).map(record => ({
         id: record.id,
         buildingId: record.building_id,
+        date: record.date,
         serialNumber: record.serial_number,
+        cameraName: record.camera_name,
         location: record.location,
+        faultReason: record.fault_reason || "",
+        performedAction: record.performed_action || "",
         result: record.result,
-        notes: record.notes,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
       })) as CameraRecord[];
@@ -137,10 +140,13 @@ export const storageService = {
       return (data || []).map(record => ({
         id: record.id,
         buildingId: record.building_id,
+        date: record.date,
         serialNumber: record.serial_number,
+        cameraName: record.camera_name,
         location: record.location,
+        faultReason: record.fault_reason || "",
+        performedAction: record.performed_action || "",
         result: record.result,
-        notes: record.notes,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
       })) as CameraRecord[];
@@ -163,10 +169,13 @@ export const storageService = {
       return {
         id: data.id,
         buildingId: data.building_id,
+        date: data.date,
         serialNumber: data.serial_number,
+        cameraName: data.camera_name,
         location: data.location,
+        faultReason: data.fault_reason || "",
+        performedAction: data.performed_action || "",
         result: data.result,
-        notes: data.notes,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       } as CameraRecord;
@@ -182,10 +191,13 @@ export const storageService = {
         .from('cameras')
         .insert([{
           building_id: record.buildingId,
+          date: record.date,
           serial_number: record.serialNumber,
+          camera_name: record.cameraName,
           location: record.location,
+          fault_reason: record.faultReason || null,
+          performed_action: record.performedAction || null,
           result: record.result,
-          notes: record.notes || null,
         }])
         .select()
         .single();
@@ -195,10 +207,13 @@ export const storageService = {
       return {
         id: data.id,
         buildingId: data.building_id,
+        date: data.date,
         serialNumber: data.serial_number,
+        cameraName: data.camera_name,
         location: data.location,
+        faultReason: data.fault_reason || "",
+        performedAction: data.performed_action || "",
         result: data.result,
-        notes: data.notes,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       } as CameraRecord;
@@ -215,10 +230,13 @@ export const storageService = {
       };
       
       if (updates.buildingId !== undefined) updateData.building_id = updates.buildingId;
+      if (updates.date !== undefined) updateData.date = updates.date;
       if (updates.serialNumber !== undefined) updateData.serial_number = updates.serialNumber;
+      if (updates.cameraName !== undefined) updateData.camera_name = updates.cameraName;
       if (updates.location !== undefined) updateData.location = updates.location;
+      if (updates.faultReason !== undefined) updateData.fault_reason = updates.faultReason;
+      if (updates.performedAction !== undefined) updateData.performed_action = updates.performedAction;
       if (updates.result !== undefined) updateData.result = updates.result;
-      if (updates.notes !== undefined) updateData.notes = updates.notes;
       
       const { data, error } = await supabase
         .from('cameras')
@@ -232,10 +250,13 @@ export const storageService = {
       return {
         id: data.id,
         buildingId: data.building_id,
+        date: data.date,
         serialNumber: data.serial_number,
+        cameraName: data.camera_name,
         location: data.location,
+        faultReason: data.fault_reason || "",
+        performedAction: data.performed_action || "",
         result: data.result,
-        notes: data.notes,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       } as CameraRecord;
