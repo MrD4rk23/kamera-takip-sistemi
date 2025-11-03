@@ -98,19 +98,34 @@ const BuildingList = () => {
       return;
     }
 
-    if (editingBuilding) {
-      await storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
-      toast.success("Bina güncellendi");
-    } else {
-      await storageService.addBuilding(newBuildingName, newBuildingColor);
-      toast.success("Bina eklendi");
-    }
+    try {
+      if (editingBuilding) {
+        const success = await storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
+        if (success) {
+          toast.success("Bina güncellendi");
+        } else {
+          toast.error("Bina güncellenemedi");
+          return;
+        }
+      } else {
+        const newBuilding = await storageService.addBuilding(newBuildingName, newBuildingColor);
+        if (newBuilding) {
+          toast.success("Bina eklendi");
+        } else {
+          toast.error("Bina eklenemedi");
+          return;
+        }
+      }
 
-    setIsEditDialogOpen(false);
-    setEditingBuilding(null);
-    setNewBuildingName("");
-    setNewBuildingColor(colorOptions[0].value);
-    await loadBuildings();
+      setIsEditDialogOpen(false);
+      setEditingBuilding(null);
+      setNewBuildingName("");
+      setNewBuildingColor(colorOptions[0].value);
+      await loadBuildings();
+    } catch (error) {
+      console.error("Bina kaydetme hatası:", error);
+      toast.error("Bir hata oluştu");
+    }
   };
 
   const handleAddNew = () => {

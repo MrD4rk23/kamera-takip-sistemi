@@ -12,8 +12,9 @@ export const storageService = {
       
       if (error) throw error;
       
-      // İlk kez açıldığında varsayılan binaları ekle
+      // İlk kez açıldığında veya binalar silinmişse varsayılan binaları ekle
       if (!data || data.length === 0) {
+        console.log("🏢 Varsayılan binalar ekleniyor...");
         const initialBuildings = defaultBuildings.map(b => ({
           name: b.name,
           color: b.color,
@@ -25,13 +26,18 @@ export const storageService = {
           .insert(initialBuildings)
           .select();
         
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("❌ Binalar eklenirken hata:", insertError);
+          throw insertError;
+        }
+        
+        console.log("✅ Varsayılan binalar eklendi:", inserted?.length);
         return inserted as Building[];
       }
       
       return data as Building[];
     } catch (error) {
-      console.error("Binalar yüklenirken hata:", error);
+      console.error("❌ Binalar yüklenirken hata:", error);
       return [];
     }
   },
@@ -54,31 +60,43 @@ export const storageService = {
 
   addBuilding: async (name: string, color: string): Promise<Building | null> => {
     try {
+      console.log("🏢 Yeni bina ekleniyor:", name, color);
       const { data, error } = await supabase
         .from('buildings')
         .insert([{ name, color }])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Bina ekleme hatası:", error);
+        throw error;
+      }
+      
+      console.log("✅ Bina eklendi:", data);
       return data as Building;
     } catch (error) {
-      console.error("Bina eklenirken hata:", error);
+      console.error("❌ Bina eklenirken hata:", error);
       return null;
     }
   },
 
   updateBuilding: async (id: string, name: string, color: string): Promise<boolean> => {
     try {
+      console.log("🔄 Bina güncelleniyor:", id, name, color);
       const { error } = await supabase
         .from('buildings')
         .update({ name, color, updated_at: new Date().toISOString() })
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Bina güncelleme hatası:", error);
+        throw error;
+      }
+      
+      console.log("✅ Bina güncellendi");
       return true;
     } catch (error) {
-      console.error("Bina güncellenirken hata:", error);
+      console.error("❌ Bina güncellenirken hata:", error);
       return false;
     }
   },
