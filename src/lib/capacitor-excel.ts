@@ -74,20 +74,21 @@ export const exportToExcelCapacitor = async (records: CameraRecord[]) => {
 // Tüm binaların toplu raporunu oluştur
 export const exportAllBuildingsToExcel = async (
   buildings: Building[], 
-  getRecordsByBuilding: (buildingId: string) => CameraRecord[]
+  getRecordsByBuilding: (buildingId: string) => Promise<CameraRecord[]>
 ) => {
   // Workbook oluştur
   const wb = XLSX.utils.book_new();
 
   // Özet sayfa için veri hazırla
-  const summaryData = buildings.map(building => {
-    const cameras = getRecordsByBuilding(building.id);
+  const summaryData = [];
+  for (const building of buildings) {
+    const cameras = await getRecordsByBuilding(building.id);
     const faultCount = cameras.filter(c => 
       c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
     ).length;
     const workingCount = cameras.length - faultCount;
 
-    return {
+    summaryData.push({
       "Bina Adı": building.name,
       "Toplam Kamera": cameras.length,
       "Çalışan": workingCount,
@@ -95,8 +96,8 @@ export const exportAllBuildingsToExcel = async (
       "Arıza Oranı": cameras.length > 0 
         ? `%${((faultCount / cameras.length) * 100).toFixed(1)}` 
         : "%0",
-    };
-  });
+    });
+  }
 
   // Özet sayfasını ekle
   const summaryWs = XLSX.utils.json_to_sheet(summaryData);
@@ -110,8 +111,8 @@ export const exportAllBuildingsToExcel = async (
   XLSX.utils.book_append_sheet(wb, summaryWs, "📊 Özet");
 
   // Her bina için ayrı sayfa oluştur
-  buildings.forEach(building => {
-    const cameras = getRecordsByBuilding(building.id);
+  for (const building of buildings) {
+    const cameras = await getRecordsByBuilding(building.id);
     
     if (cameras.length > 0) {
       const buildingData = cameras.map(record => ({
@@ -143,12 +144,12 @@ export const exportAllBuildingsToExcel = async (
 
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     }
-  });
+  }
 
   // Tüm kameraları içeren genel sayfa
   const allCameras: any[] = [];
-  buildings.forEach(building => {
-    const cameras = getRecordsByBuilding(building.id);
+  for (const building of buildings) {
+    const cameras = await getRecordsByBuilding(building.id);
     cameras.forEach(record => {
       allCameras.push({
         "Bina": building.name,
@@ -161,7 +162,7 @@ export const exportAllBuildingsToExcel = async (
         "Durum": record.result,
       });
     });
-  });
+  }
 
   if (allCameras.length > 0) {
     const allWs = XLSX.utils.json_to_sheet(allCameras);

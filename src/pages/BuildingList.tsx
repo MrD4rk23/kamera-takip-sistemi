@@ -129,8 +129,8 @@ const BuildingList = () => {
     }
 
     try {
-      await exportAllBuildingsToExcel(buildings, (buildingId) => 
-        storageService.getRecordsByBuilding(buildingId)
+      await exportAllBuildingsToExcel(buildings, async (buildingId) => 
+        await storageService.getRecordsByBuilding(buildingId)
       );
       toast.success("Toplu rapor hazırlandı");
     } catch (error) {

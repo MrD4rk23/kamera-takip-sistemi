@@ -36,7 +36,7 @@ const CameraForm = () => {
   const [formData, setFormData] = useState({
     buildingId: paramBuildingId || "",
     date: new Date().toISOString().split('T')[0],
-    serialNumber: storageService.getNextSerialNumber(),
+    serialNumber: 0, // Will be set in useEffect
     cameraName: "",
     location: "",
     faultReason: "",
@@ -45,8 +45,12 @@ const CameraForm = () => {
   });
 
   useEffect(() => {
+    loadFormData();
+  }, [cameraId, paramBuildingId, isEdit, navigate]);
+
+  const loadFormData = async () => {
     if (isEdit && cameraId) {
-      const record = storageService.getRecord(cameraId);
+      const record = await storageService.getRecord(cameraId);
       if (record) {
         setFormData({
           buildingId: record.buildingId,
@@ -58,28 +62,33 @@ const CameraForm = () => {
           performedAction: record.performedAction,
           result: record.result,
         });
-        const buildingData = storageService.getBuilding(record.buildingId);
+        const buildingData = await storageService.getBuilding(record.buildingId);
         setBuilding(buildingData);
       } else {
         toast.error("Kayıt bulunamadı");
         navigate("/");
       }
     } else if (paramBuildingId) {
-      const buildingData = storageService.getBuilding(paramBuildingId);
+      const buildingData = await storageService.getBuilding(paramBuildingId);
       if (buildingData) {
         setBuilding(buildingData);
+        const nextSerial = await storageService.getNextSerialNumber();
+        setFormData(prev => ({ ...prev, serialNumber: nextSerial }));
       } else {
         toast.error("Bina bulunamadı");
         navigate("/");
       }
+    } else {
+      const nextSerial = await storageService.getNextSerialNumber();
+      setFormData(prev => ({ ...prev, serialNumber: nextSerial }));
     }
-  }, [cameraId, paramBuildingId, isEdit, navigate]);
+  };
 
   // Otomatik kaydetme - her değişiklikte
   useEffect(() => {
     if (isEdit && cameraId) {
-      const timer = setTimeout(() => {
-        storageService.updateRecord(cameraId, formData);
+      const timer = setTimeout(async () => {
+        await storageService.updateRecord(cameraId, formData);
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -89,7 +98,7 @@ const CameraForm = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.cameraName.trim()) {
@@ -106,20 +115,20 @@ const CameraForm = () => {
     }
 
     if (isEdit && cameraId) {
-      storageService.updateRecord(cameraId, formData);
+      await storageService.updateRecord(cameraId, formData);
       toast.success("Kayıt güncellendi");
       navigate(`/building/${formData.buildingId}`);
     } else {
-      storageService.addRecord(formData);
+      await storageService.addRecord(formData);
       toast.success("Kayıt eklendi");
       navigate(`/building/${formData.buildingId}`);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (cameraId) {
       const buildingId = formData.buildingId;
-      storageService.deleteRecord(cameraId);
+      await storageService.deleteRecord(cameraId);
       toast.success("Kayıt silindi");
       navigate(`/building/${buildingId}`);
     }
