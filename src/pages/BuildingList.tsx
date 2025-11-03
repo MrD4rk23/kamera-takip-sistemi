@@ -59,22 +59,31 @@ const BuildingList = () => {
   }, []);
 
   const loadBuildings = async () => {
-    const allBuildings = await storageService.getAllBuildings();
-    setBuildings(allBuildings);
-    
-    // Load stats for each building
-    const stats: Record<string, { total: number; faulty: number }> = {};
-    for (const building of allBuildings) {
-      const cameras = await storageService.getRecordsByBuilding(building.id);
-      const faultyCameras = cameras.filter(c => 
-        c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
-      );
-      stats[building.id] = {
-        total: cameras.length,
-        faulty: faultyCameras.length,
-      };
+    console.log("📋 BuildingList: Binalar yükleniyor...");
+    try {
+      const allBuildings = await storageService.getAllBuildings();
+      console.log("📋 BuildingList: Yüklenen bina sayısı:", allBuildings.length);
+      console.log("📋 BuildingList: Binalar:", allBuildings);
+      setBuildings(allBuildings);
+      
+      // Load stats for each building
+      const stats: Record<string, { total: number; faulty: number }> = {};
+      for (const building of allBuildings) {
+        const cameras = await storageService.getRecordsByBuilding(building.id);
+        const faultyCameras = cameras.filter(c => 
+          c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
+        );
+        stats[building.id] = {
+          total: cameras.length,
+          faulty: faultyCameras.length,
+        };
+      }
+      setBuildingStats(stats);
+      console.log("✅ BuildingList: Binalar ve istatistikler yüklendi");
+    } catch (error) {
+      console.error("❌ BuildingList: Binalar yüklenirken hata:", error);
+      toast.error("Binalar yüklenemedi: " + (error as Error).message);
     }
-    setBuildingStats(stats);
   };
 
   const getBuildingCameraCount = (buildingId: string) => {
