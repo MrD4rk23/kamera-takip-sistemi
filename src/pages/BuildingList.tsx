@@ -63,7 +63,6 @@ const BuildingList = () => {
     try {
       const allBuildings = await storageService.getAllBuildings();
       console.log("📋 BuildingList: Yüklenen bina sayısı:", allBuildings.length);
-      console.log("📋 BuildingList: Binalar:", allBuildings);
       setBuildings(allBuildings);
       
       // Load stats for each building
@@ -80,9 +79,10 @@ const BuildingList = () => {
       }
       setBuildingStats(stats);
       console.log("✅ BuildingList: Binalar ve istatistikler yüklendi");
-    } catch (error) {
-      console.error("❌ BuildingList: Binalar yüklenirken hata:", error);
-      toast.error("Binalar yüklenemedi: " + (error as Error).message);
+    } catch (error: any) {
+      console.error("❌ BuildingList hatası:", error);
+      console.error("Hata mesajı:", error.message, error.details, error.hint);
+      toast.error("Binalar yüklenemedi: " + error.message);
     }
   };
 
@@ -110,20 +110,18 @@ const BuildingList = () => {
     try {
       if (editingBuilding) {
         const success = await storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
-        if (success) {
-          toast.success("Bina güncellendi");
-        } else {
+        if (!success) {
           toast.error("Bina güncellenemedi");
           return;
         }
+        toast.success("Bina güncellendi");
       } else {
         const newBuilding = await storageService.addBuilding(newBuildingName, newBuildingColor);
-        if (newBuilding) {
-          toast.success("Bina eklendi");
-        } else {
+        if (!newBuilding) {
           toast.error("Bina eklenemedi");
           return;
         }
+        toast.success("Bina eklendi");
       }
 
       setIsEditDialogOpen(false);
@@ -131,9 +129,9 @@ const BuildingList = () => {
       setNewBuildingName("");
       setNewBuildingColor(colorOptions[0].value);
       await loadBuildings();
-    } catch (error) {
-      console.error("Bina kaydetme hatası:", error);
-      toast.error("Bir hata oluştu");
+    } catch (error: any) {
+      console.error("❌ handleSaveBuilding hatası:", error);
+      toast.error("Hata: " + error.message);
     }
   };
 

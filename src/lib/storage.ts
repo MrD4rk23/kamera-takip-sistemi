@@ -10,35 +10,17 @@ export const storageService = {
         .select('*')
         .order('name', { ascending: true });
       
-      if (error) throw error;
-      
-      // İlk kez açıldığında veya binalar silinmişse varsayılan binaları ekle
-      if (!data || data.length === 0) {
-        console.log("🏢 Varsayılan binalar ekleniyor...");
-        const initialBuildings = defaultBuildings.map(b => ({
-          name: b.name,
-          color: b.color,
-          icon: b.icon || null,
-        }));
-        
-        const { data: inserted, error: insertError } = await supabase
-          .from('buildings')
-          .insert(initialBuildings)
-          .select();
-        
-        if (insertError) {
-          console.error("❌ Binalar eklenirken hata:", insertError);
-          throw insertError;
-        }
-        
-        console.log("✅ Varsayılan binalar eklendi:", inserted?.length);
-        return inserted as Building[];
+      if (error) {
+        console.error("❌ Supabase getAllBuildings hatası:", error);
+        throw error;
       }
       
-      return data as Building[];
-    } catch (error) {
-      console.error("❌ Binalar yüklenirken hata:", error);
-      return [];
+      console.log("✅ Binalar yüklendi:", data?.length || 0);
+      return (data || []) as Building[];
+    } catch (error: any) {
+      console.error("❌ getAllBuildings exception:", error);
+      console.error("Hata detayı:", error.message, error.details, error.hint);
+      throw error;
     }
   },
 
@@ -60,7 +42,6 @@ export const storageService = {
 
   addBuilding: async (name: string, color: string): Promise<Building | null> => {
     try {
-      console.log("🏢 Yeni bina ekleniyor:", name, color);
       const { data, error } = await supabase
         .from('buildings')
         .insert([{ name, color }])
@@ -68,15 +49,17 @@ export const storageService = {
         .single();
       
       if (error) {
-        console.error("❌ Bina ekleme hatası:", error);
+        console.error("❌ Supabase addBuilding hatası:", error);
+        console.error("Hata detayı:", error.message, error.details, error.hint);
         throw error;
       }
       
       console.log("✅ Bina eklendi:", data);
       return data as Building;
-    } catch (error) {
-      console.error("❌ Bina eklenirken hata:", error);
-      return null;
+    } catch (error: any) {
+      console.error("❌ addBuilding exception:", error);
+      console.error("Hata mesajı:", error.message);
+      throw error;
     }
   },
 
