@@ -124,15 +124,13 @@ const BuildingList = () => {
         toast.success("Bina eklendi");
       }
 
-      // Önce dialog'u kapat, sonra state'leri temizle
-      setIsEditDialogOpen(false);
+      // State'leri temizle
+      setEditingBuilding(null);
+      setNewBuildingName("");
+      setNewBuildingColor(colorOptions[0].value);
       
-      // Dialog kapandıktan sonra state temizliği için timeout
-      setTimeout(() => {
-        setEditingBuilding(null);
-        setNewBuildingName("");
-        setNewBuildingColor(colorOptions[0].value);
-      }, 100);
+      // Dialog'u kapat
+      setIsEditDialogOpen(false);
       
       // Binaları yeniden yükle
       await loadBuildings();
@@ -523,17 +521,19 @@ const BuildingList = () => {
       </footer>
 
       {/* Edit/Add Building Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
-        setIsEditDialogOpen(open);
-        if (!open) {
-          // Dialog kapanırken state temizle
-          setTimeout(() => {
+      <Dialog 
+        key={editingBuilding?.id || 'new'}
+        open={isEditDialogOpen} 
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) {
+            // Dialog kapanırken state temizle
             setEditingBuilding(null);
             setNewBuildingName("");
             setNewBuildingColor(colorOptions[0].value);
-          }, 100);
-        }
-      }}>
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -580,12 +580,16 @@ const BuildingList = () => {
                       try {
                         await storageService.deleteBuilding(editingBuilding.id);
                         toast.success("Bina silindi");
+                        
+                        // State temizle
+                        setEditingBuilding(null);
+                        setNewBuildingName("");
+                        setNewBuildingColor(colorOptions[0].value);
+                        
+                        // Dialog kapat
                         setIsEditDialogOpen(false);
-                        setTimeout(() => {
-                          setEditingBuilding(null);
-                          setNewBuildingName("");
-                          setNewBuildingColor(colorOptions[0].value);
-                        }, 100);
+                        
+                        // Listeyi güncelle
                         await loadBuildings();
                       } catch (error: any) {
                         toast.error("Bina silinemedi: " + error.message);
@@ -602,7 +606,11 @@ const BuildingList = () => {
       </Dialog>
 
       {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={!!bulkDeleteType} onOpenChange={() => setBulkDeleteType(null)}>
+      <AlertDialog 
+        key={bulkDeleteType || 'none'}
+        open={!!bulkDeleteType} 
+        onOpenChange={() => setBulkDeleteType(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
