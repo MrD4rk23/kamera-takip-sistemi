@@ -155,8 +155,8 @@ const BuildingList = () => {
     }
 
     try {
-      await exportAllBuildingsToExcel(buildings, async (buildingId) => 
-        await storageService.getRecordsByBuilding(buildingId)
+      await exportAllBuildingsToExcel(buildings, (buildingId) => 
+        storageService.getRecordsByBuilding(buildingId)
       );
       toast.success("Toplu rapor hazırlandı");
     } catch (error) {
@@ -165,10 +165,10 @@ const BuildingList = () => {
     }
   };
 
-  const handleBackupDownload = async () => {
+  const handleBackupDownload = () => {
     try {
-      const allBuildings = await storageService.getAllBuildings();
-      const allCameras = await storageService.getAllRecords();
+      const allBuildings = storageService.getAllBuildings();
+      const allCameras = storageService.getAllRecords();
       
       const backup = {
         version: "1.0",
@@ -238,34 +238,36 @@ const BuildingList = () => {
     setBulkDeleteType(type);
   };
 
-  const confirmBulkDelete = async () => {
+    const confirmBulkDelete = () => {
     if (!bulkDeleteType) return;
 
-    let totalDeleted = 0;
-    
-    for (const building of buildings) {
-      const cameras = await storageService.getRecordsByBuilding(building.id);
-      let camerasToDelete = [];
-      
-      if (bulkDeleteType === "all-faulty") {
-        camerasToDelete = cameras.filter(c => 
-          c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
-        );
-      } else if (bulkDeleteType === "all-working") {
-        camerasToDelete = cameras.filter(c => 
-          c.result === "Sorunsuz Çalışıyor" || c.result === "Arıza Giderildi"
-        );
-      }
+    const isDeleteFaulty = bulkDeleteType === "all-faulty";
+    let deletedCount = 0;
 
-      for (const camera of camerasToDelete) {
-        await storageService.deleteRecord(camera.id);
-        totalDeleted++;
-      }
+    for (const building of buildings) {
+      const cameras = storageService.getRecordsByBuilding(building.id);
+      
+      const camerasToDelete = cameras.filter(c => {
+        if (isDeleteFaulty) {
+          return c.result !== "Sorunsuz Çalışıyor" && 
+                 c.result !== "Arıza Giderildi" && 
+                 c.result !== "İade Edildi";
+        } else {
+          return c.result === "Sorunsuz Çalışıyor" || 
+                 c.result === "Arıza Giderildi" || 
+                 c.result === "İade Edildi";
+        }
+      });
+
+      camerasToDelete.forEach(camera => {
+        storageService.deleteRecord(camera.id);
+        deletedCount++;
+      });
     }
 
-    toast.success(`${totalDeleted} kamera silindi`);
+    toast.success(`${deletedCount} kamera silindi`);
     setBulkDeleteType(null);
-    await loadBuildings();
+    loadBuildings();
   };
 
   return (
@@ -574,10 +576,10 @@ const BuildingList = () => {
               {editingBuilding && (
                 <Button
                   variant="destructive"
-                  onClick={async () => {
+                  onClick={() => {
                     if (confirm("Bu binayı silmek istediğinizden emin misiniz? İçindeki tüm kameralar da silinecek!")) {
                       try {
-                        await storageService.deleteBuilding(editingBuilding.id);
+                        storageService.deleteBuilding(editingBuilding.id);
                         toast.success("Bina silindi");
                         
                         // State temizle
@@ -589,7 +591,7 @@ const BuildingList = () => {
                         setIsEditDialogOpen(false);
                         
                         // Listeyi güncelle
-                        await loadBuildings();
+                        loadBuildings();
                       } catch (error: any) {
                         toast.error("Bina silinemedi: " + error.message);
                       }
