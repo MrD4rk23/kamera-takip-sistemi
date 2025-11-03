@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,25 @@ export default function BulkCameraAdd() {
   const { toast } = useToast();
   const [cameraType, setCameraType] = useState<"İç Kamera" | "Dış Kamera">("İç Kamera");
   const [count, setCount] = useState<number>(10);
+  const [building, setBuilding] = useState<any>(null);
 
-  const building = storageService.getAllBuildings().find(b => b.id === buildingId);
+  useEffect(() => {
+    loadBuilding();
+  }, [buildingId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadBuilding = async () => {
+    if (!buildingId) return;
+    const buildings = await storageService.getAllBuildings();
+    const found = buildings.find(b => b.id === buildingId);
+    setBuilding(found);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!buildingId) return;
 
-    const existingRecords = storageService.getRecordsByBuilding(buildingId);
+    const existingRecords = await storageService.getRecordsByBuilding(buildingId);
     const startNumber = existingRecords.filter(r => r.location.includes(cameraType)).length + 1;
 
     // Toplu kamera oluştur
@@ -40,7 +50,7 @@ export default function BulkCameraAdd() {
         result: "Sorunsuz Çalışıyor",
       };
       
-      storageService.addRecord(newRecord);
+      await storageService.addRecord(newRecord);
     }
 
     toast({

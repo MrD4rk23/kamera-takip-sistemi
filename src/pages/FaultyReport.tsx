@@ -36,14 +36,14 @@ const FaultyReport = () => {
     filterCameras();
   }, [searchQuery, faultyCameras]);
 
-  const loadFaultyCameras = () => {
-    const allBuildings = storageService.getAllBuildings();
+  const loadFaultyCameras = async () => {
+    const allBuildings = await storageService.getAllBuildings();
     setBuildings(allBuildings);
 
     const allFaulty: FaultyCameraWithBuilding[] = [];
 
-    allBuildings.forEach(building => {
-      const cameras = storageService.getRecordsByBuilding(building.id);
+    for (const building of allBuildings) {
+      const cameras = await storageService.getRecordsByBuilding(building.id);
       const faultyCamerasInBuilding = cameras.filter(camera => 
         camera.result !== "Sorunsuz Çalışıyor" && camera.result !== "Arıza Giderildi" && camera.result !== "İade Edildi"
       );
@@ -55,7 +55,7 @@ const FaultyReport = () => {
           buildingColor: building.color,
         });
       });
-    });
+    }
 
     // Tarihe göre azalan sıralama
     allFaulty.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

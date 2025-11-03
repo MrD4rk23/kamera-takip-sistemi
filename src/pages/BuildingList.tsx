@@ -45,6 +45,7 @@ const colorOptions = [
 const BuildingList = () => {
   const navigate = useNavigate();
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [buildingStats, setBuildingStats] = useState<Record<string, { total: number; faulty: number }>>({});
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
   const [newBuildingName, setNewBuildingName] = useState("");
@@ -57,21 +58,31 @@ const BuildingList = () => {
     loadBuildings();
   }, []);
 
-  const loadBuildings = () => {
-    const allBuildings = storageService.getAllBuildings();
+  const loadBuildings = async () => {
+    const allBuildings = await storageService.getAllBuildings();
     setBuildings(allBuildings);
+    
+    // Load stats for each building
+    const stats: Record<string, { total: number; faulty: number }> = {};
+    for (const building of allBuildings) {
+      const cameras = await storageService.getRecordsByBuilding(building.id);
+      const faultyCameras = cameras.filter(c => 
+        c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
+      );
+      stats[building.id] = {
+        total: cameras.length,
+        faulty: faultyCameras.length,
+      };
+    }
+    setBuildingStats(stats);
   };
 
   const getBuildingCameraCount = (buildingId: string) => {
-    const cameras = storageService.getRecordsByBuilding(buildingId);
-    return cameras.length;
+    return buildingStats[buildingId]?.total || 0;
   };
 
   const getBuildingFaultCount = (buildingId: string) => {
-    const cameras = storageService.getRecordsByBuilding(buildingId);
-    return cameras.filter(c => 
-      c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
-    ).length;
+    return buildingStats[buildingId]?.faulty || 0;
   };
 
   const handleEditBuilding = (building: Building) => {
@@ -81,17 +92,17 @@ const BuildingList = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveBuilding = () => {
+  const handleSaveBuilding = async () => {
     if (!newBuildingName.trim()) {
       toast.error("Bina adı gerekli");
       return;
     }
 
     if (editingBuilding) {
-      storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
+      await storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
       toast.success("Bina güncellendi");
     } else {
-      storageService.addBuilding(newBuildingName, newBuildingColor);
+      await storageService.addBuilding(newBuildingName, newBuildingColor);
       toast.success("Bina eklendi");
     }
 
@@ -99,7 +110,7 @@ const BuildingList = () => {
     setEditingBuilding(null);
     setNewBuildingName("");
     setNewBuildingColor(colorOptions[0].value);
-    loadBuildings();
+    await loadBuildings();
   };
 
   const handleAddNew = () => {
@@ -128,10 +139,10 @@ const BuildingList = () => {
     }
   };
 
-  const handleBackupDownload = () => {
+  const handleBackupDownload = async () => {
     try {
-      const allBuildings = storageService.getAllBuildings();
-      const allCameras = storageService.getAllRecords();
+      const allBuildings = await storageService.getAllBuildings();
+      const allCameras = await storageService.getAllRecords();
       
       const backup = {
         version: "1.0",
@@ -201,13 +212,13 @@ const BuildingList = () => {
     setBulkDeleteType(type);
   };
 
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = async () => {
     if (!bulkDeleteType) return;
 
     let totalDeleted = 0;
     
-    buildings.forEach(building => {
-      const cameras = storageService.getRecordsByBuilding(building.id);
+    for (const building of buildings) {
+      const cameras = await storageService.getRecordsByBuilding(building.id);
       let camerasToDelete = [];
       
       if (bulkDeleteType === "all-faulty") {
@@ -220,15 +231,15 @@ const BuildingList = () => {
         );
       }
 
-      camerasToDelete.forEach(camera => {
-        storageService.deleteRecord(camera.id);
+      for (const camera of camerasToDelete) {
+        await storageService.deleteRecord(camera.id);
         totalDeleted++;
-      });
-    });
+      }
+    }
 
     toast.success(`${totalDeleted} kamera silindi`);
     setBulkDeleteType(null);
-    loadBuildings();
+    await loadBuildings();
   };
 
   return (

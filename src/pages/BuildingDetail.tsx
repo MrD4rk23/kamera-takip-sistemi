@@ -49,7 +49,13 @@ const BuildingDetail = () => {
       return;
     }
 
-    const buildingData = storageService.getBuilding(buildingId);
+    loadBuildingData();
+  }, [buildingId, navigate]);
+
+  const loadBuildingData = async () => {
+    if (!buildingId) return;
+    
+    const buildingData = await storageService.getBuilding(buildingId);
     if (!buildingData) {
       toast.error("Bina bulunamadı");
       navigate("/");
@@ -57,8 +63,8 @@ const BuildingDetail = () => {
     }
 
     setBuilding(buildingData);
-    loadCameras();
-  }, [buildingId, navigate]);
+    await loadCameras();
+  };
 
   useEffect(() => {
     filterCameras();
@@ -81,9 +87,9 @@ const BuildingDetail = () => {
     }
   };
 
-  const loadCameras = () => {
+  const loadCameras = async () => {
     if (!buildingId) return;
-    const camerasData = storageService.getRecordsByBuilding(buildingId);
+    const camerasData = await storageService.getRecordsByBuilding(buildingId);
     // Tarihe göre azalan sıralama
     const sorted = camerasData.sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -118,20 +124,20 @@ const BuildingDetail = () => {
     setCameraToDelete(cameraId);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!cameraToDelete) return;
     
-    storageService.deleteRecord(cameraToDelete);
+    await storageService.deleteRecord(cameraToDelete);
     toast.success("Kamera silindi");
     setCameraToDelete(null);
-    loadCameras();
+    await loadCameras();
   };
 
   const handleBulkDelete = (type: "faulty" | "working") => {
     setBulkDeleteType(type);
   };
 
-  const confirmBulkDelete = () => {
+  const confirmBulkDelete = async () => {
     if (!bulkDeleteType || !buildingId) return;
 
     let camerasToDelete: CameraRecord[] = [];
@@ -146,13 +152,13 @@ const BuildingDetail = () => {
       );
     }
 
-    camerasToDelete.forEach(camera => {
-      storageService.deleteRecord(camera.id);
-    });
+    for (const camera of camerasToDelete) {
+      await storageService.deleteRecord(camera.id);
+    }
 
     toast.success(`${camerasToDelete.length} kamera silindi`);
     setBulkDeleteType(null);
-    loadCameras();
+    await loadCameras();
   };
 
   const faultCount = cameras.filter(c => 

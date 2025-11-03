@@ -34,7 +34,7 @@ const RecordForm = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    serialNumber: storageService.getNextSerialNumber(),
+    serialNumber: 0, // Will be set in useEffect
     deviceName: "",
     brand: "",
     model: "",
@@ -46,8 +46,12 @@ const RecordForm = () => {
   });
 
   useEffect(() => {
+    loadForm();
+  }, [id, isEdit, navigate]);
+
+  const loadForm = async () => {
     if (isEdit && id) {
-      const record = storageService.getRecord(id);
+      const record = await storageService.getRecord(id);
       if (record) {
         setFormData({
           date: record.date,
@@ -65,8 +69,12 @@ const RecordForm = () => {
         toast.error("Kayıt bulunamadı");
         navigate("/");
       }
+    } else {
+      // New record - get next serial number
+      const nextSerial = await storageService.getNextSerialNumber();
+      setFormData(prev => ({ ...prev, serialNumber: nextSerial }));
     }
-  }, [id, isEdit, navigate]);
+  };
 
   // Otomatik kaydetme - her değişiklikte
   useEffect(() => {

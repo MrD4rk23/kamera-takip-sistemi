@@ -1,135 +1,280 @@
 import { CameraRecord, Building, defaultBuildings } from "@/types/record";
-
-const STORAGE_KEY = "camera_records";
-const BUILDINGS_KEY = "buildings";
+import { supabase } from "./supabase";
 
 export const storageService = {
   // Building methods
-  getAllBuildings: (): Building[] => {
+  getAllBuildings: async (): Promise<Building[]> => {
     try {
-      const data = localStorage.getItem(BUILDINGS_KEY);
-      if (!data) {
-        // İlk kez açıldığında varsayılan binaları ekle
+      const { data, error } = await supabase
+        .from('buildings')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      // İlk kez açıldığında varsayılan binaları ekle
+      if (!data || data.length === 0) {
         const initialBuildings = defaultBuildings.map(b => ({
-          ...b,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          name: b.name,
+          color: b.color,
+          icon: b.icon || null,
         }));
-        localStorage.setItem(BUILDINGS_KEY, JSON.stringify(initialBuildings));
-        return initialBuildings;
+        
+        const { data: inserted, error: insertError } = await supabase
+          .from('buildings')
+          .insert(initialBuildings)
+          .select();
+        
+        if (insertError) throw insertError;
+        return inserted as Building[];
       }
-      return JSON.parse(data);
+      
+      return data as Building[];
     } catch (error) {
       console.error("Binalar yüklenirken hata:", error);
       return [];
     }
   },
 
-  getBuilding: (id: string): Building | null => {
-    const buildings = storageService.getAllBuildings();
-    return buildings.find(b => b.id === id) || null;
-  },
-
-  addBuilding: (name: string, color: string): Building => {
-    const buildings = storageService.getAllBuildings();
-    const newBuilding: Building = {
-      id: crypto.randomUUID(),
-      name,
-      color,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    buildings.push(newBuilding);
-    localStorage.setItem(BUILDINGS_KEY, JSON.stringify(buildings));
-    return newBuilding;
-  },
-
-  updateBuilding: (id: string, name: string, color: string): void => {
-    const buildings = storageService.getAllBuildings();
-    const index = buildings.findIndex(b => b.id === id);
-    if (index !== -1) {
-      buildings[index] = {
-        ...buildings[index],
-        name,
-        color,
-        updatedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(BUILDINGS_KEY, JSON.stringify(buildings));
+  getBuilding: async (id: string): Promise<Building | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('buildings')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data as Building;
+    } catch (error) {
+      console.error("Bina yüklenirken hata:", error);
+      return null;
     }
   },
 
-  deleteBuilding: (id: string): void => {
-    const buildings = storageService.getAllBuildings();
-    const filtered = buildings.filter(b => b.id !== id);
-    localStorage.setItem(BUILDINGS_KEY, JSON.stringify(filtered));
-    // Binaya ait kameraları da sil
-    const records = storageService.getAllRecords();
-    const filteredRecords = records.filter(r => r.buildingId !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
+  addBuilding: async (name: string, color: string): Promise<Building | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('buildings')
+        .insert([{ name, color }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data as Building;
+    } catch (error) {
+      console.error("Bina eklenirken hata:", error);
+      return null;
+    }
+  },
+
+  updateBuilding: async (id: string, name: string, color: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('buildings')
+        .update({ name, color, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Bina güncellenirken hata:", error);
+      return false;
+    }
+  },
+
+  deleteBuilding: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('buildings')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Bina silinirken hata:", error);
+      return false;
+    }
   },
 
   // Camera record methods
-  getAllRecords: (): CameraRecord[] => {
+  getAllRecords: async (): Promise<CameraRecord[]> => {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const { data, error } = await supabase
+        .from('cameras')
+        .select('*')
+        .order('serial_number', { ascending: true });
+      
+      if (error) throw error;
+      
+      return (data || []).map(record => ({
+        id: record.id,
+        buildingId: record.building_id,
+        serialNumber: record.serial_number,
+        location: record.location,
+        result: record.result,
+        notes: record.notes,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+      })) as CameraRecord[];
     } catch (error) {
       console.error("Kayıtlar yüklenirken hata:", error);
       return [];
     }
   },
 
-  getRecordsByBuilding: (buildingId: string): CameraRecord[] => {
-    return storageService.getAllRecords().filter(r => r.buildingId === buildingId);
+  getRecordsByBuilding: async (buildingId: string): Promise<CameraRecord[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('cameras')
+        .select('*')
+        .eq('building_id', buildingId)
+        .order('serial_number', { ascending: true });
+      
+      if (error) throw error;
+      
+      return (data || []).map(record => ({
+        id: record.id,
+        buildingId: record.building_id,
+        serialNumber: record.serial_number,
+        location: record.location,
+        result: record.result,
+        notes: record.notes,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+      })) as CameraRecord[];
+    } catch (error) {
+      console.error("Bina kayıtları yüklenirken hata:", error);
+      return [];
+    }
   },
 
-  getRecord: (id: string): CameraRecord | null => {
-    const records = storageService.getAllRecords();
-    return records.find(record => record.id === id) || null;
+  getRecord: async (id: string): Promise<CameraRecord | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('cameras')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        buildingId: data.building_id,
+        serialNumber: data.serial_number,
+        location: data.location,
+        result: data.result,
+        notes: data.notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as CameraRecord;
+    } catch (error) {
+      console.error("Kayıt yüklenirken hata:", error);
+      return null;
+    }
   },
 
-  addRecord: (record: Omit<CameraRecord, 'id' | 'createdAt' | 'updatedAt'>): CameraRecord => {
-    const records = storageService.getAllRecords();
-    const newRecord: CameraRecord = {
-      ...record,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    records.push(newRecord);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    return newRecord;
+  addRecord: async (record: Omit<CameraRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<CameraRecord | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('cameras')
+        .insert([{
+          building_id: record.buildingId,
+          serial_number: record.serialNumber,
+          location: record.location,
+          result: record.result,
+          notes: record.notes || null,
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        buildingId: data.building_id,
+        serialNumber: data.serial_number,
+        location: data.location,
+        result: data.result,
+        notes: data.notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as CameraRecord;
+    } catch (error) {
+      console.error("Kayıt eklenirken hata:", error);
+      return null;
+    }
   },
 
-  updateRecord: (id: string, updates: Partial<CameraRecord>): CameraRecord | null => {
-    const records = storageService.getAllRecords();
-    const index = records.findIndex(record => record.id === id);
-    if (index === -1) return null;
-
-    records[index] = {
-      ...records[index],
-      ...updates,
-      id: records[index].id,
-      createdAt: records[index].createdAt,
-      updatedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    return records[index];
+  updateRecord: async (id: string, updates: Partial<CameraRecord>): Promise<CameraRecord | null> => {
+    try {
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (updates.buildingId !== undefined) updateData.building_id = updates.buildingId;
+      if (updates.serialNumber !== undefined) updateData.serial_number = updates.serialNumber;
+      if (updates.location !== undefined) updateData.location = updates.location;
+      if (updates.result !== undefined) updateData.result = updates.result;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+      
+      const { data, error } = await supabase
+        .from('cameras')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        buildingId: data.building_id,
+        serialNumber: data.serial_number,
+        location: data.location,
+        result: data.result,
+        notes: data.notes,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+      } as CameraRecord;
+    } catch (error) {
+      console.error("Kayıt güncellenirken hata:", error);
+      return null;
+    }
   },
 
-  deleteRecord: (id: string): boolean => {
-    const records = storageService.getAllRecords();
-    const filteredRecords = records.filter(record => record.id !== id);
-    if (filteredRecords.length === records.length) return false;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredRecords));
-    return true;
+  deleteRecord: async (id: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('cameras')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Kayıt silinirken hata:", error);
+      return false;
+    }
   },
 
-  getNextSerialNumber: (): number => {
-    const records = storageService.getAllRecords();
-    if (records.length === 0) return 1;
-    const maxSerial = Math.max(...records.map(r => r.serialNumber));
-    return maxSerial + 1;
+  getNextSerialNumber: async (): Promise<number> => {
+    try {
+      const { data, error } = await supabase
+        .from('cameras')
+        .select('serial_number')
+        .order('serial_number', { ascending: false })
+        .limit(1);
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) return 1;
+      return data[0].serial_number + 1;
+    } catch (error) {
+      console.error("Seri numara alınırken hata:", error);
+      return 1;
+    }
   },
 };
