@@ -36,14 +36,14 @@ const FaultyReport = () => {
     filterCameras();
   }, [searchQuery, faultyCameras]);
 
-  const loadFaultyCameras = async () => {
-    const allBuildings = await storageService.getAllBuildings();
+  const loadFaultyCameras = () => {
+    const allBuildings = storageService.getAllBuildings();
     setBuildings(allBuildings);
 
     const allFaulty: FaultyCameraWithBuilding[] = [];
 
     for (const building of allBuildings) {
-      const cameras = await storageService.getRecordsByBuilding(building.id);
+      const cameras = storageService.getRecordsByBuilding(building.id);
       const faultyCamerasInBuilding = cameras.filter(camera => 
         camera.result !== "Sorunsuz Çalışıyor" && camera.result !== "Arıza Giderildi" && camera.result !== "İade Edildi"
       );

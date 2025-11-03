@@ -21,19 +21,19 @@ export default function BulkCameraAdd() {
     loadBuilding();
   }, [buildingId]);
 
-  const loadBuilding = async () => {
+  const loadBuilding = () => {
     if (!buildingId) return;
-    const buildings = await storageService.getAllBuildings();
+    const buildings = storageService.getAllBuildings();
     const found = buildings.find(b => b.id === buildingId);
     setBuilding(found);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!buildingId) return;
 
-    const existingRecords = await storageService.getRecordsByBuilding(buildingId);
+    const existingRecords = storageService.getRecordsByBuilding(buildingId);
     const startNumber = existingRecords.filter(r => r.location.includes(cameraType)).length + 1;
 
     // Toplu kamera oluştur
@@ -50,7 +50,7 @@ export default function BulkCameraAdd() {
         result: "Sorunsuz Çalışıyor",
       };
       
-      await storageService.addRecord(newRecord);
+      storageService.addRecord(newRecord);
     }
 
     toast({
