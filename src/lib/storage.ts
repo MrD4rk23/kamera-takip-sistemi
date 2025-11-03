@@ -11,7 +11,6 @@ export const storageService = {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.BUILDINGS);
       if (!stored) {
-        // İlk kez açıldığında varsayılan binaları ekle
         const initialBuildings: Building[] = defaultBuildings.map((b, index) => ({
           ...b,
           id: (index + 1).toString(),
@@ -73,14 +72,12 @@ export const storageService = {
     const filtered = buildings.filter(b => b.id !== id);
     localStorage.setItem(STORAGE_KEYS.BUILDINGS, JSON.stringify(filtered));
     
-    // Binaya ait kameraları da sil
     const records = storageService.getAllRecords();
     const filteredRecords = records.filter(r => r.buildingId !== id);
     localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(filteredRecords));
     return true;
   },
 
-  // Camera record methods
   getAllRecords: (): CameraRecord[] => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.RECORDS);
@@ -142,4 +139,3 @@ export const storageService = {
     return maxSerial + 1;
   },
 };
-
