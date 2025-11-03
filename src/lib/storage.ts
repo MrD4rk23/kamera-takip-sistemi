@@ -1,302 +1,145 @@
 import { CameraRecord, Building, defaultBuildings } from "@/types/record";
-import { supabase } from "./supabase";
+
+const STORAGE_KEYS = {
+  BUILDINGS: "buildings",
+  RECORDS: "camera_records",
+} as const;
 
 export const storageService = {
   // Building methods
-  getAllBuildings: async (): Promise<Building[]> => {
+  getAllBuildings: (): Building[] => {
     try {
-      const { data, error } = await supabase
-        .from('buildings')
-        .select('*')
-        .order('name', { ascending: true });
-      
-      if (error) {
-        console.error("❌ Supabase getAllBuildings hatası:", error);
-        throw error;
+      const stored = localStorage.getItem(STORAGE_KEYS.BUILDINGS);
+      if (!stored) {
+        // İlk kez açıldığında varsayılan binaları ekle
+        const initialBuildings: Building[] = defaultBuildings.map((b, index) => ({
+          ...b,
+          id: (index + 1).toString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }));
+        localStorage.setItem(STORAGE_KEYS.BUILDINGS, JSON.stringify(initialBuildings));
+        return initialBuildings;
       }
-      
-      console.log("✅ Binalar yüklendi:", data?.length || 0);
-      return (data || []) as Building[];
-    } catch (error: any) {
-      console.error("❌ getAllBuildings exception:", error);
-      console.error("Hata detayı:", error.message, error.details, error.hint);
-      throw error;
-    }
-  },
-
-  getBuilding: async (id: string): Promise<Building | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('buildings')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
-      return data as Building;
+      return JSON.parse(stored);
     } catch (error) {
-      console.error("Bina yüklenirken hata:", error);
-      return null;
+      console.error("Binalar yüklenirken hata:", error);
+      const initialBuildings: Building[] = defaultBuildings.map((b, index) => ({
+        ...b,
+        id: (index + 1).toString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+      return initialBuildings;
     }
   },
 
-  addBuilding: async (name: string, color: string): Promise<Building | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('buildings')
-        .insert([{ name, color }])
-        .select()
-        .single();
-      
-      if (error) {
-        console.error("❌ Supabase addBuilding hatası:", error);
-        console.error("Hata detayı:", error.message, error.details, error.hint);
-        throw error;
-      }
-      
-      console.log("✅ Bina eklendi:", data);
-      return data as Building;
-    } catch (error: any) {
-      console.error("❌ addBuilding exception:", error);
-      console.error("Hata mesajı:", error.message);
-      throw error;
-    }
+  getBuilding: (id: string): Building | null => {
+    const buildings = storageService.getAllBuildings();
+    return buildings.find(b => b.id === id) || null;
   },
 
-  updateBuilding: async (id: string, name: string, color: string): Promise<boolean> => {
-    try {
-      console.log("🔄 Bina güncelleniyor:", id, name, color);
-      const { error } = await supabase
-        .from('buildings')
-        .update({ name, color, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      
-      if (error) {
-        console.error("❌ Bina güncelleme hatası:", error);
-        throw error;
-      }
-      
-      console.log("✅ Bina güncellendi");
-      return true;
-    } catch (error) {
-      console.error("❌ Bina güncellenirken hata:", error);
-      return false;
-    }
+  addBuilding: (name: string, color: string): Building => {
+    const buildings = storageService.getAllBuildings();
+    const newBuilding: Building = {
+      id: Date.now().toString(),
+      name,
+      color,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    buildings.push(newBuilding);
+    localStorage.setItem(STORAGE_KEYS.BUILDINGS, JSON.stringify(buildings));
+    return newBuilding;
   },
 
-  deleteBuilding: async (id: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('buildings')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error("Bina silinirken hata:", error);
-      return false;
-    }
+  updateBuilding: (id: string, name: string, color: string): boolean => {
+    const buildings = storageService.getAllBuildings();
+    const index = buildings.findIndex(b => b.id === id);
+    if (index === -1) return false;
+    
+    buildings[index] = {
+      ...buildings[index],
+      name,
+      color,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEYS.BUILDINGS, JSON.stringify(buildings));
+    return true;
+  },
+
+  deleteBuilding: (id: string): boolean => {
+    const buildings = storageService.getAllBuildings();
+    const filtered = buildings.filter(b => b.id !== id);
+    localStorage.setItem(STORAGE_KEYS.BUILDINGS, JSON.stringify(filtered));
+    
+    // Binaya ait kameraları da sil
+    const records = storageService.getAllRecords();
+    const filteredRecords = records.filter(r => r.buildingId !== id);
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(filteredRecords));
+    return true;
   },
 
   // Camera record methods
-  getAllRecords: async (): Promise<CameraRecord[]> => {
+  getAllRecords: (): CameraRecord[] => {
     try {
-      const { data, error} = await supabase
-        .from('cameras')
-        .select('*')
-        .order('serial_number', { ascending: true });
-      
-      if (error) throw error;
-      
-      return (data || []).map(record => ({
-        id: record.id,
-        buildingId: record.building_id,
-        date: record.date,
-        serialNumber: record.serial_number,
-        cameraName: record.camera_name,
-        location: record.location,
-        faultReason: record.fault_reason || "",
-        performedAction: record.performed_action || "",
-        result: record.result,
-        createdAt: record.created_at,
-        updatedAt: record.updated_at,
-      })) as CameraRecord[];
+      const stored = localStorage.getItem(STORAGE_KEYS.RECORDS);
+      return stored ? JSON.parse(stored) : [];
     } catch (error) {
       console.error("Kayıtlar yüklenirken hata:", error);
       return [];
     }
   },
 
-  getRecordsByBuilding: async (buildingId: string): Promise<CameraRecord[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('cameras')
-        .select('*')
-        .eq('building_id', buildingId)
-        .order('serial_number', { ascending: true });
-      
-      if (error) throw error;
-      
-      return (data || []).map(record => ({
-        id: record.id,
-        buildingId: record.building_id,
-        date: record.date,
-        serialNumber: record.serial_number,
-        cameraName: record.camera_name,
-        location: record.location,
-        faultReason: record.fault_reason || "",
-        performedAction: record.performed_action || "",
-        result: record.result,
-        createdAt: record.created_at,
-        updatedAt: record.updated_at,
-      })) as CameraRecord[];
-    } catch (error) {
-      console.error("Bina kayıtları yüklenirken hata:", error);
-      return [];
-    }
+  getRecordsByBuilding: (buildingId: string): CameraRecord[] => {
+    const records = storageService.getAllRecords();
+    return records.filter(r => r.buildingId === buildingId);
   },
 
-  getRecord: async (id: string): Promise<CameraRecord | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('cameras')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
-      
-      return {
-        id: data.id,
-        buildingId: data.building_id,
-        date: data.date,
-        serialNumber: data.serial_number,
-        cameraName: data.camera_name,
-        location: data.location,
-        faultReason: data.fault_reason || "",
-        performedAction: data.performed_action || "",
-        result: data.result,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      } as CameraRecord;
-    } catch (error) {
-      console.error("Kayıt yüklenirken hata:", error);
-      return null;
-    }
+  getRecord: (id: string): CameraRecord | null => {
+    const records = storageService.getAllRecords();
+    return records.find(r => r.id === id) || null;
   },
 
-  addRecord: async (record: Omit<CameraRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<CameraRecord | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('cameras')
-        .insert([{
-          building_id: record.buildingId,
-          date: record.date,
-          serial_number: record.serialNumber,
-          camera_name: record.cameraName,
-          location: record.location,
-          fault_reason: record.faultReason || null,
-          performed_action: record.performedAction || null,
-          result: record.result,
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      return {
-        id: data.id,
-        buildingId: data.building_id,
-        date: data.date,
-        serialNumber: data.serial_number,
-        cameraName: data.camera_name,
-        location: data.location,
-        faultReason: data.fault_reason || "",
-        performedAction: data.performed_action || "",
-        result: data.result,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      } as CameraRecord;
-    } catch (error) {
-      console.error("Kayıt eklenirken hata:", error);
-      return null;
-    }
+  addRecord: (record: Omit<CameraRecord, 'id' | 'createdAt' | 'updatedAt'>): CameraRecord => {
+    const records = storageService.getAllRecords();
+    const newRecord: CameraRecord = {
+      ...record,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    records.push(newRecord);
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+    return newRecord;
   },
 
-  updateRecord: async (id: string, updates: Partial<CameraRecord>): Promise<CameraRecord | null> => {
-    try {
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
-      
-      if (updates.buildingId !== undefined) updateData.building_id = updates.buildingId;
-      if (updates.date !== undefined) updateData.date = updates.date;
-      if (updates.serialNumber !== undefined) updateData.serial_number = updates.serialNumber;
-      if (updates.cameraName !== undefined) updateData.camera_name = updates.cameraName;
-      if (updates.location !== undefined) updateData.location = updates.location;
-      if (updates.faultReason !== undefined) updateData.fault_reason = updates.faultReason;
-      if (updates.performedAction !== undefined) updateData.performed_action = updates.performedAction;
-      if (updates.result !== undefined) updateData.result = updates.result;
-      
-      const { data, error } = await supabase
-        .from('cameras')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      
-      return {
-        id: data.id,
-        buildingId: data.building_id,
-        date: data.date,
-        serialNumber: data.serial_number,
-        cameraName: data.camera_name,
-        location: data.location,
-        faultReason: data.fault_reason || "",
-        performedAction: data.performed_action || "",
-        result: data.result,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      } as CameraRecord;
-    } catch (error) {
-      console.error("Kayıt güncellenirken hata:", error);
-      return null;
-    }
+  updateRecord: (id: string, updates: Partial<CameraRecord>): CameraRecord | null => {
+    const records = storageService.getAllRecords();
+    const index = records.findIndex(r => r.id === id);
+    if (index === -1) return null;
+    
+    records[index] = {
+      ...records[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+    return records[index];
   },
 
-  deleteRecord: async (id: string): Promise<boolean> => {
-    try {
-      const { error } = await supabase
-        .from('cameras')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      return true;
-    } catch (error) {
-      console.error("Kayıt silinirken hata:", error);
-      return false;
-    }
+  deleteRecord: (id: string): boolean => {
+    const records = storageService.getAllRecords();
+    const filtered = records.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(filtered));
+    return true;
   },
 
-  getNextSerialNumber: async (): Promise<number> => {
-    try {
-      const { data, error } = await supabase
-        .from('cameras')
-        .select('serial_number')
-        .order('serial_number', { ascending: false })
-        .limit(1);
-      
-      if (error) throw error;
-      
-      if (!data || data.length === 0) return 1;
-      return data[0].serial_number + 1;
-    } catch (error) {
-      console.error("Seri numara alınırken hata:", error);
-      return 1;
-    }
+  getNextSerialNumber: (): number => {
+    const records = storageService.getAllRecords();
+    if (records.length === 0) return 1;
+    const maxSerial = Math.max(...records.map(r => r.serialNumber || 0));
+    return maxSerial + 1;
   },
 };
+

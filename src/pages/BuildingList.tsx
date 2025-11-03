@@ -58,17 +58,17 @@ const BuildingList = () => {
     loadBuildings();
   }, []);
 
-  const loadBuildings = async () => {
+  const loadBuildings = () => {
     console.log("📋 BuildingList: Binalar yükleniyor...");
     try {
-      const allBuildings = await storageService.getAllBuildings();
+      const allBuildings = storageService.getAllBuildings();
       console.log("📋 BuildingList: Yüklenen bina sayısı:", allBuildings.length);
       setBuildings(allBuildings);
       
       // Load stats for each building
       const stats: Record<string, { total: number; faulty: number }> = {};
       for (const building of allBuildings) {
-        const cameras = await storageService.getRecordsByBuilding(building.id);
+        const cameras = storageService.getRecordsByBuilding(building.id);
         const faultyCameras = cameras.filter(c => 
           c.result !== "Sorunsuz Çalışıyor" && c.result !== "Arıza Giderildi" && c.result !== "İade Edildi"
         );
@@ -81,7 +81,6 @@ const BuildingList = () => {
       console.log("✅ BuildingList: Binalar ve istatistikler yüklendi");
     } catch (error: any) {
       console.error("❌ BuildingList hatası:", error);
-      console.error("Hata mesajı:", error.message, error.details, error.hint);
       toast.error("Binalar yüklenemedi: " + error.message);
     }
   };
@@ -101,7 +100,7 @@ const BuildingList = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveBuilding = async () => {
+  const handleSaveBuilding = () => {
     if (!newBuildingName.trim()) {
       toast.error("Bina adı gerekli");
       return;
@@ -109,14 +108,14 @@ const BuildingList = () => {
 
     try {
       if (editingBuilding) {
-        const success = await storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
+        const success = storageService.updateBuilding(editingBuilding.id, newBuildingName, newBuildingColor);
         if (!success) {
           toast.error("Bina güncellenemedi");
           return;
         }
         toast.success("Bina güncellendi");
       } else {
-        const newBuilding = await storageService.addBuilding(newBuildingName, newBuildingColor);
+        const newBuilding = storageService.addBuilding(newBuildingName, newBuildingColor);
         if (!newBuilding) {
           toast.error("Bina eklenemedi");
           return;
@@ -133,7 +132,7 @@ const BuildingList = () => {
       setIsEditDialogOpen(false);
       
       // Binaları yeniden yükle
-      await loadBuildings();
+      loadBuildings();
     } catch (error: any) {
       console.error("❌ handleSaveBuilding hatası:", error);
       toast.error("Hata: " + error.message);
