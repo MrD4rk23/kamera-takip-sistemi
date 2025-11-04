@@ -56,6 +56,25 @@ const BuildingList = () => {
 
   useEffect(() => {
     loadBuildings();
+    
+    // Firebase realtime updates listener
+    const handleBuildingsUpdate = () => {
+      console.log("🔥 Firebase event: Binalar güncellendi, yeniden yükleniyor...");
+      loadBuildings();
+    };
+    
+    const handleRecordsUpdate = () => {
+      console.log("🔥 Firebase event: Kayıtlar güncellendi, istatistikler yenileniyor...");
+      loadBuildings();
+    };
+    
+    window.addEventListener('buildingsUpdated', handleBuildingsUpdate);
+    window.addEventListener('recordsUpdated', handleRecordsUpdate);
+    
+    return () => {
+      window.removeEventListener('buildingsUpdated', handleBuildingsUpdate);
+      window.removeEventListener('recordsUpdated', handleRecordsUpdate);
+    };
   }, []);
 
   const loadBuildings = () => {

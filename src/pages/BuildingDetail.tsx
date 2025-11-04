@@ -50,6 +50,25 @@ const BuildingDetail = () => {
     }
 
     loadBuildingData();
+    
+    // Firebase realtime updates listener
+    const handleBuildingsUpdate = () => {
+      console.log("🔥 Firebase event: Binalar güncellendi");
+      loadBuildingData();
+    };
+    
+    const handleRecordsUpdate = () => {
+      console.log("🔥 Firebase event: Kayıtlar güncellendi");
+      loadCameras();
+    };
+    
+    window.addEventListener('buildingsUpdated', handleBuildingsUpdate);
+    window.addEventListener('recordsUpdated', handleRecordsUpdate);
+    
+    return () => {
+      window.removeEventListener('buildingsUpdated', handleBuildingsUpdate);
+      window.removeEventListener('recordsUpdated', handleRecordsUpdate);
+    };
   }, [buildingId, navigate]);
 
   const loadBuildingData = () => {
